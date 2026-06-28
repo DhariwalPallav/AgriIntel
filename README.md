@@ -22,8 +22,8 @@ pip install -r requirements.txt
 ## Project Status
 - [x] Phase 0 — Foundation
 - [x] Phase 1 — Yield Prediction
-- [x] Phase 2 — Fertilizer Recommendation  
+- [x] Phase 2 — Fertilizer Recommendation
 - [x] Phase 3 — Weather Integration
-- [ ] Phase 4 — FastAPI Backend
-- [ ] Phase 5 — Database
-- [ ] Phase 6 — Frontend Dashboard
+- [x] Phase 4 — FastAPI Backend
+- [x] Phase 5 — Database
+- [x] Phase 6 — Frontend Dashboard
