@@ -102,10 +102,13 @@ def predict_yield(data: YieldInput, db: Session = Depends(get_db)):
     input_df = input_df.reindex(
         columns=yield_model.feature_names_in_, fill_value=0
     )
-    prediction = yield_model.predict(input_df)[0]
-    predicted_kg = round(prediction / 10, 2)
+    prediction = float(yield_model.predict(input_df)[0])
+    predicted_kg = float(round(prediction / 10, 2))
 
     # Save to database
+    print(type(prediction))
+    print(type(predicted_kg))
+    print(predicted_kg)
     record = crud.save_yield_prediction(db, data, predicted_kg)
 
     return {
