@@ -1,6 +1,15 @@
 venv/
+venv312/
+
 __pycache__/
 *.pyc
+
 .env
+
 models/*.pkl
+
 notes.txt
+
+datasets/plantvillage/
+models/disease_model.pt
+models/disease_classes.txt

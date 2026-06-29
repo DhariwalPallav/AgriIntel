@@ -15,7 +15,7 @@ st.divider()
 
 page = st.sidebar.selectbox(
     "Navigate",
-    ["Weather Intelligence", "Yield Prediction", "Fertilizer Recommendation", "Prediction History"]
+    ["Weather Intelligence", "Yield Prediction", "Fertilizer Recommendation", "Disease Detection", "Prediction History"]
 )
 
 # ─── WEATHER PAGE ───────────────────────────────────────
@@ -143,6 +143,49 @@ elif page == "Fertilizer Recommendation":
                 st.error(f"Could not connect to API server. Is it running? ({e})")
 
 # ─── HISTORY PAGE ───────────────────────────────────────
+elif page == "Disease Detection":
+    st.header("Crop Disease Detection")
+    st.write("Upload a leaf image to identify diseases using AI. Supported crops: Apple, Corn, Grape, Peach, Pepper, Potato, Soybean, Tomato, Rice, Wheat.")
+
+    uploaded_file = st.file_uploader(
+        "Upload a leaf image",
+        type=["jpg", "jpeg", "png"],
+        help="Take a clear photo of the affected leaf against a plain background for best results"
+    )
+
+    if uploaded_file is not None:
+        col1, col2 = st.columns([1, 1])
+
+        with col1:
+            st.image(uploaded_file, caption="Uploaded leaf image", use_container_width=True)
+
+        with col2:
+            if st.button("Detect Disease", type="primary"):
+                with st.spinner("Analysing leaf..."):
+                    try:
+                        files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
+                        response = requests.post(f"{API_BASE}/predict-disease", files=files)
+                        data = response.json()
+
+                        if "error" in data:
+                            st.error(f"Error: {data['error']}")
+                        else:
+                            if data["is_healthy"]:
+                                st.success("This leaf appears HEALTHY")
+                            else:
+                                st.error(f"Disease detected!")
+
+                            st.metric("Crop", data["crop"])
+                            st.metric("Diagnosis", data["disease"])
+                            st.metric("Confidence", f"{data['confidence_percent']}%")
+
+                            if not data["is_healthy"]:
+                                st.warning(
+                                    f"Recommended action: Consult your local agricultural extension "
+                                    f"officer about treatment options for {data['disease']} in {data['crop']}."
+                                )
+                    except Exception as e:
+                        st.error(f"Could not connect to API server. Is it running? ({e})")
 elif page == "Prediction History":
     st.header("Prediction History")
     st.write("View all past predictions stored in the database.")

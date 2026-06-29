@@ -17,3 +17,10 @@ class FertilizerInput(BaseModel):
     nitrogen: int
     potassium: int
     phosphorous: int
+    
+class DiseaseOutput(BaseModel):
+    predicted_class: str
+    crop: str
+    disease: str
+    confidence_percent: float
+    is_healthy: bool

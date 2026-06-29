@@ -1,3 +1,9 @@
+from fastapi import FastAPI, Depends, File, UploadFile
+from PIL import Image
+import torch
+import torchvision.models as tv_models
+import torchvision.transforms as transforms
+import io
 import os
 import joblib
 import pandas as pd
@@ -20,6 +26,23 @@ Base.metadata.create_all(bind=engine)
 yield_model = joblib.load("models/yield_model.pkl")
 fertilizer_model = joblib.load("models/fertilizer_model.pkl")
 fertilizer_encoder = joblib.load("models/fertilizer_label_encoder.pkl")
+# Load disease detection model
+with open("models/disease_classes.txt", "r") as f:
+    disease_classes = [line.strip() for line in f.readlines()]
+
+disease_model = tv_models.resnet18(weights=None)
+disease_model.fc = torch.nn.Linear(512, len(disease_classes))
+disease_model.load_state_dict(
+    torch.load("models/disease_model.pt", map_location="cpu", weights_only=True)
+)
+disease_model.eval()
+
+disease_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
+])
 
 app = FastAPI(
     title="AgriIntel API",
@@ -144,3 +167,32 @@ def get_fertilizer_history(limit: int = 10, db: Session = Depends(get_db)):
             "created_at": str(r.created_at)
         } for r in records
     ]}
+    
+@app.post("/predict-disease")
+async def predict_disease(file: UploadFile = File(...)):
+    # Read and preprocess the uploaded image
+    contents = await file.read()
+    img = Image.open(io.BytesIO(contents)).convert("RGB")
+    tensor = disease_transform(img).unsqueeze(0)
+
+    with torch.no_grad():
+        output = disease_model(tensor)
+        probs = torch.softmax(output, dim=1)
+        top_prob, top_idx = probs.max(1)
+
+    predicted_class = disease_classes[top_idx.item()]
+    confidence = round(top_prob.item() * 100, 2)
+
+    # Parse crop and disease from class name (format: Crop___Disease)
+    parts = predicted_class.split("___")
+    crop = parts[0].replace("_", " ") if len(parts) > 0 else predicted_class
+    disease = parts[1].replace("_", " ") if len(parts) > 1 else "Unknown"
+    is_healthy = "healthy" in disease.lower() or "Healthy" in disease
+
+    return {
+        "predicted_class": predicted_class,
+        "crop": crop,
+        "disease": disease,
+        "confidence_percent": confidence,
+        "is_healthy": is_healthy
+    }
