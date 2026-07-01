@@ -170,7 +170,6 @@ def get_fertilizer_history(limit: int = 10, db: Session = Depends(get_db)):
     
 @app.post("/predict-disease")
 async def predict_disease(file: UploadFile = File(...)):
-    # Read and preprocess the uploaded image
     contents = await file.read()
     img = Image.open(io.BytesIO(contents)).convert("RGB")
     tensor = disease_transform(img).unsqueeze(0)
@@ -178,21 +177,54 @@ async def predict_disease(file: UploadFile = File(...)):
     with torch.no_grad():
         output = disease_model(tensor)
         probs = torch.softmax(output, dim=1)
-        top_prob, top_idx = probs.max(1)
 
-    predicted_class = disease_classes[top_idx.item()]
-    confidence = round(top_prob.item() * 100, 2)
+        # Get top 2 predictions and their probabilities
+        top2_probs, top2_idxs = torch.topk(probs, k=2, dim=1)
 
-    # Parse crop and disease from class name (format: Crop___Disease)
+    top_prob = top2_probs[0][0].item()       # highest confidence
+    second_prob = top2_probs[0][1].item()    # second highest confidence
+    top_idx = top2_idxs[0][0].item()         # index of best prediction
+    gap = top_prob - second_prob             # difference between top 2
+
+    confidence = round(top_prob * 100, 2)
+
+    # Check 1: top confidence must be at least 70%
+    if top_prob < 0.70:
+        return {
+            "predicted_class": None,
+            "crop": None,
+            "disease": None,
+            "confidence_percent": confidence,
+            "is_healthy": None,
+            "rejected": True,
+            "rejection_reason": f"Low confidence ({confidence}%). Please upload a clearer leaf photo."
+        }
+
+    # Check 2: gap between 1st and 2nd must be at least 15%
+    if gap < 0.15:
+        return {
+            "predicted_class": None,
+            "crop": None,
+            "disease": None,
+            "confidence_percent": confidence,
+            "is_healthy": None,
+            "rejected": True,
+            "rejection_reason": f"Model uncertain between top predictions (gap: {round(gap*100, 2)}%). Please upload a clearer leaf photo."
+        }
+
+    # Passed both checks — return prediction normally
+    predicted_class = disease_classes[top_idx]
     parts = predicted_class.split("___")
     crop = parts[0].replace("_", " ") if len(parts) > 0 else predicted_class
     disease = parts[1].replace("_", " ") if len(parts) > 1 else "Unknown"
-    is_healthy = "healthy" in disease.lower() or "Healthy" in disease
+    is_healthy = "healthy" in disease.lower()
 
     return {
         "predicted_class": predicted_class,
         "crop": crop,
         "disease": disease,
         "confidence_percent": confidence,
-        "is_healthy": is_healthy
+        "is_healthy": is_healthy,
+        "rejected": False,
+        "rejection_reason": None
     }

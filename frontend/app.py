@@ -170,20 +170,23 @@ elif page == "Disease Detection":
                         if "error" in data:
                             st.error(f"Error: {data['error']}")
                         else:
-                            if data["is_healthy"]:
-                                st.success("This leaf appears HEALTHY")
+                            if data.get("rejected"):
+                                st.warning(f"⚠️ {data['rejection_reason']}")
                             else:
-                                st.error(f"Disease detected!")
+                                if data["is_healthy"]:
+                                    st.success("This leaf appears HEALTHY")
+                                else:
+                                    st.error("Disease detected!")
 
-                            st.metric("Crop", data["crop"])
-                            st.metric("Diagnosis", data["disease"])
-                            st.metric("Confidence", f"{data['confidence_percent']}%")
+                                st.metric("Crop", data["crop"])
+                                st.metric("Diagnosis", data["disease"])
+                                st.metric("Confidence", f"{data['confidence_percent']}%")
 
-                            if not data["is_healthy"]:
-                                st.warning(
-                                    f"Recommended action: Consult your local agricultural extension "
-                                    f"officer about treatment options for {data['disease']} in {data['crop']}."
-                                )
+                                if not data["is_healthy"]:
+                                    st.warning(
+                                        f"Recommended action: Consult your local agricultural extension "
+                                        f"officer about treatment options for {data['disease']} in {data['crop']}."
+                                    )
                     except Exception as e:
                         st.error(f"Could not connect to API server. Is it running? ({e})")
 elif page == "Prediction History":

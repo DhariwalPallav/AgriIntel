@@ -13,3 +13,8 @@ notes.txt
 datasets/plantvillage/
 models/disease_model.pt
 models/disease_classes.txt
+datasets/plantdoc/
+datasets/rice_field/
+datasets/sugarcane_field/
+datasets/wheat_field/
+datasets/unified_dataset/
